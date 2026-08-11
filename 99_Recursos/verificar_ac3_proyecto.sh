@@ -584,38 +584,58 @@ else
     info "     Hoy funciona. Tras un apagon, los clientes no arrancan en red."
 fi
 
+# Rogue DHCP: Kea tiene que escuchar SOLO en la interfaz del laboratorio.
+# 0.0.0.0:67 reparte IPs a CUALQUIER red, incluida la del instituto.
+KEA_LISTEN=$(ss -ulpn 2>/dev/null | grep ':67 ' | head -1)
+if [ -n "$KEA_LISTEN" ]; then
+    if echo "$KEA_LISTEN" | grep -qE "(0\.0\.0\.0|\*):67"; then
+        fallo "H3. Kea DHCP escucha en TODAS las interfaces (0.0.0.0:67)"
+        info "     Eso reparte direcciones tambien a la red del instituto."
+        info "     La directiva 'interfaces-config' no esta atando el servicio."
+        info "     Es el fallo mas peligroso de todo el proyecto."
+    elif echo "$KEA_LISTEN" | grep -q "$RED_ESPERADA"; then
+        ok "H3. Kea DHCP escucha en una interfaz de la red de la academia"
+    else
+        aviso "H3. Kea DHCP escucha en el 67 pero no en $RED_ESPERADA"
+        info "     Comprueba que la interfaz configurada es la correcta."
+    fi
+else
+    aviso "H3. No se detecta nada escuchando en el puerto 67/UDP"
+    info "     Puede ser un falso negativo. Compruebalo: ss -ulpn | grep kea"
+fi
+
 if command -v kea-dhcp4 >/dev/null 2>&1; then
     if kea-dhcp4 -t "$CONF_KEA" >/dev/null 2>&1; then
-        ok "H3. La configuracion de Kea es sintacticamente valida"
+        ok "H4. La configuracion de Kea es sintacticamente valida"
     else
-        fallo "H3. La configuracion de Kea TIENE errores de sintaxis"
+        fallo "H4. La configuracion de Kea TIENE errores de sintaxis"
         info "     Ejecuta: kea-dhcp4 -t $CONF_KEA"
         info "     El validador te dice exactamente que linea falla."
     fi
 else
-    aviso "H3. No se encuentra 'kea-dhcp4' - ¿esta instalado Kea?"
+    aviso "H4. No se encuentra 'kea-dhcp4' - ¿esta instalado Kea?"
 fi
 
 if [ -f "$CONF_KEA" ]; then
     for CLIENTE in $CLIENTES; do
         NOM="${CLIENTE%=*}"; IP_ESP="${CLIENTE#*=}"
         if grep -q "\"hostname\": \"$NOM\"" "$CONF_KEA" 2>/dev/null; then
-            ok "H4. Hay una reserva declarada para '$NOM'"
+            ok "H5. Hay una reserva declarada para '$NOM'"
         else
-            fallo "H4. No hay reserva para '$NOM' en la configuracion de Kea"
+            fallo "H5. No hay reserva para '$NOM' en la configuracion de Kea"
             info "     Sin reserva, la IP de este equipo no sera fija."
         fi
     done
 
     if grep -q '"enable-updates": true' "$CONF_KEA" 2>/dev/null; then
-        ok "H5. El DDNS esta habilitado en la configuracion de Kea"
+        ok "H6. El DDNS esta habilitado en la configuracion de Kea"
     else
-        aviso "H5. El DDNS NO esta habilitado en Kea"
+        aviso "H6. El DDNS NO esta habilitado en Kea"
         info "     Sin DDNS, los nombres de los clientes no se registran solos"
         info "     en el DNS del dominio. Tienes que hacerlo a mano."
     fi
 else
-    fallo "H4-H5. No existe $CONF_KEA - Kea no esta configurado"
+    fallo "H6-H7. No existe $CONF_KEA - Kea no esta configurado"
 fi
 
 # Las leases: comprobar que los clientes han obtenido IP alguna vez.
@@ -623,21 +643,21 @@ if [ -f "$LEASES_CSV" ]; then
     for CLIENTE in $CLIENTES; do
         NOM="${CLIENTE%=*}"; IP_ESP="${CLIENTE#*=}"
         if grep -q "$NOM" "$LEASES_CSV" 2>/dev/null; then
-            ok "H6. '$NOM' tiene al menos una lease registrada en Kea"
+            ok "H7. '$NOM' tiene al menos una lease registrada en Kea"
             IP_LEASE=$(grep "$NOM" "$LEASES_CSV" 2>/dev/null | cut -d, -f4 | head -1)
             if [ "$IP_LEASE" = "$IP_ESP" ]; then
-                ok "H6-bis. Y la IP de la lease ($IP_LEASE) coincide con la reserva ($IP_ESP)"
+                ok "H7-bis. Y la IP de la lease ($IP_LEASE) coincide con la reserva ($IP_ESP)"
             elif [ -n "$IP_LEASE" ]; then
-                fallo "H6-bis. '$NOM' tiene IP $IP_LEASE en la lease y deberia ser $IP_ESP"
+                fallo "H7-bis. '$NOM' tiene IP $IP_LEASE en la lease y deberia ser $IP_ESP"
                 info "     La MAC de la reserva no coincide con la del cliente."
                 info "     Mira la MAC en VirtualBox y comparala con la del JSON de Kea."
             fi
         else
-            aviso "H6. '$NOM' NO tiene leases registradas - ¿han arrancado ya los clientes?"
+            aviso "H7. '$NOM' NO tiene leases registradas - ¿han arrancado ya los clientes?"
         fi
     done
 else
-    aviso "H6. No existe $LEASES_CSV - Kea no ha concedido ninguna IP todavia"
+    aviso "H7. No existe $LEASES_CSV - Kea no ha concedido ninguna IP todavia"
     info "     Este aviso es normal si aun no has arrancado los clientes (Fase 6)."
 fi
 
@@ -646,12 +666,12 @@ for CLIENTE in $CLIENTES; do
     NOM="${CLIENTE%=*}"; IP_ESP="${CLIENTE#*=}"
     DNS_RESP=$(host -t A "$NOM.$REALM_MIN" 127.0.0.1 2>/dev/null | awk '/has address/ {print $NF}' | head -1)
     if [ "$DNS_RESP" = "$IP_ESP" ]; then
-        ok "H7. '$NOM.$REALM_MIN' resuelve a $IP_ESP (DDNS funcionando)"
+        ok "H8. '$NOM.$REALM_MIN' resuelve a $IP_ESP (DDNS funcionando)"
     elif [ -n "$DNS_RESP" ]; then
-        fallo "H7. '$NOM.$REALM_MIN' resuelve a $DNS_RESP y deberia ser $IP_ESP"
+        fallo "H8. '$NOM.$REALM_MIN' resuelve a $DNS_RESP y deberia ser $IP_ESP"
         info "     El DDNS ha registrado una IP que no coincide con la reserva."
     else
-        aviso "H7. '$NOM.$REALM_MIN' no resuelve - ¿DDNS no ha registrado aun?"
+        aviso "H8. '$NOM.$REALM_MIN' no resuelve - ¿DDNS no ha registrado aun?"
         info "     Este aviso es normal si los clientes no han arrancado (Fase 6)."
     fi
 done

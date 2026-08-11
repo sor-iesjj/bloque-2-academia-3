@@ -259,9 +259,9 @@ if [ -n "$KEA_LISTEN" ]; then
     if echo "$KEA_LISTEN" | grep -qE "(0\.0\.0\.0|\*):67"; then
         fallo "F3. Kea DHCP escucha en TODAS las interfaces (0.0.0.0:67)"
         info "     Eso reparte direcciones tambien a la red del instituto."
-        info "     En kea-dhcp4.conf, en 'interfaces-config', pon:"
-        info "     'interfaces': ['la-tarjeta-del-laboratorio']"
-        info "     Luego: sudo systemctl restart kea-dhcp4-server"
+        info "     La directiva 'interfaces-config' en kea-dhcp4.conf no esta"
+        info "     atando el servicio a la tarjeta del laboratorio."
+        info "     Es el fallo mas peligroso de todo el proyecto."
     elif echo "$KEA_LISTEN" | grep -q "$RED_ESPERADA"; then
         ok "F3. Kea DHCP escucha en una interfaz de la red de la academia"
     else

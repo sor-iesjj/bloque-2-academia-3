@@ -228,7 +228,7 @@ SOR/Bloque_2/Proyecto_Academia/Fase 5/  B2-AC3-F5-la-politica-de-acceso.ova
 
 > [!danger] 🛑 ANTES DE NADA: comprueba que tienes el `.ova` y que pesa lo que debe
 > ```
-> ls -lh <tu_disco>/SOR/Academia/Fase 5/
+> ls -lh <tu_disco>/SOR/Bloque_2/Proyecto_Academia/Fase 5/
 > ```
 > **Si ese fichero no está o pesa 0, PARA AQUÍ y no borres nada.** Estás a punto de destruir la única copia que te queda.
 >

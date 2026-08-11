@@ -195,7 +195,7 @@ SOR/Bloque_2/Proyecto_Academia/FINAL/
 
 ## ✅ CHECKLIST FINAL DEL PROYECTO
 
-**Los 22 vídeos**, todos con identificación al principio, en la playlist `B2_Academia_3`:
+**Los 21 vídeos**, todos con identificación al principio, en la playlist `B2_Academia_3`:
 
 - [ ] `B2 · AC3 · F1 · Implementación` · `Verificación` · `Averías`
 - [ ] `B2 · AC3 · F2 · Implementación` · `Verificación` · `Averías`
