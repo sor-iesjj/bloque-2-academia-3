@@ -14,7 +14,7 @@
 #   sudo ./verificar_ac3_fase1.sh
 #
 # El informe se guarda en verificacion-academia-base.txt, en la carpeta actual.
-# Escenario completo: 99_Recursos/00_El_Cliente_Boochan_Academy.md
+# Escenario completo: ../00_El_Cliente_Boochan_Academy.md
 #
 # ---------------------------------------------------------------------------
 # ESTE VERIFICADOR NO TE DA EL ARREGLO. A PROPOSITO.
@@ -251,45 +251,68 @@ else
     info "     Hoy funciona. Tras un apagon, no. Y en una academia hay apagones."
 fi
 
+# El DHCP tiene que escuchar SOLO en la interfaz correcta, no en todas.
+# 0.0.0.0:67 significa que esta repartiendo IPs a cualquier red que pregunte,
+# incluida la del instituto.
+KEA_LISTEN=$(ss -ulpn 2>/dev/null | grep ':67 ' | head -1)
+if [ -n "$KEA_LISTEN" ]; then
+    if echo "$KEA_LISTEN" | grep -qE "(0\.0\.0\.0|\*):67"; then
+        fallo "F3. Kea DHCP escucha en TODAS las interfaces (0.0.0.0:67)"
+        info "     Eso reparte direcciones tambien a la red del instituto."
+        info "     En kea-dhcp4.conf, en 'interfaces-config', pon:"
+        info "     'interfaces': ['la-tarjeta-del-laboratorio']"
+        info "     Luego: sudo systemctl restart kea-dhcp4-server"
+    elif echo "$KEA_LISTEN" | grep -q "$RED_ESPERADA"; then
+        ok "F3. Kea DHCP escucha en una interfaz de la red de la academia"
+    else
+        aviso "F3. Kea DHCP escucha en el 67 pero no en $RED_ESPERADA"
+        info "     Comprueba que la interfaz configurada es la correcta."
+        info "     Mira: ss -ulpn | grep dhcp"
+    fi
+else
+    aviso "F3. No se detecta nada escuchando en el puerto 67/UDP"
+    info "     Puede ser un falso negativo. Compruebalo: ss -ulpn | grep kea"
+fi
+
 if command -v kea-dhcp4 >/dev/null 2>&1; then
     if kea-dhcp4 -t /etc/kea/kea-dhcp4.conf >/dev/null 2>&1; then
-        ok "F3. La configuracion de Kea es sintacticamente valida"
+        ok "F4. La configuracion de Kea es sintacticamente valida"
     else
-        fallo "F3. La configuracion de Kea TIENE errores de sintaxis"
+        fallo "F4. La configuracion de Kea TIENE errores de sintaxis"
         info "     Ejecuta: kea-dhcp4 -t /etc/kea/kea-dhcp4.conf"
         info "     Un JSON mal cerrado, una coma de mas o una llave fuera de sitio"
         info "     y el servicio no arranca. El validador te dice donde."
     fi
 else
-    aviso "F3. No se encuentra 'kea-dhcp4' - ¿esta instalado Kea?"
+    aviso "F4. No se encuentra 'kea-dhcp4' - ¿esta instalado Kea?"
 fi
 
 CONF="/etc/kea/kea-dhcp4.conf"
 if [ -f "$CONF" ]; then
     if grep -q '"hostname": "aula1-pc01"' "$CONF" 2>/dev/null; then
-        ok "F4. Hay una reserva declarada para 'aula1-pc01'"
+        ok "F5. Hay una reserva declarada para 'aula1-pc01'"
     else
-        fallo "F4. No hay reserva para 'aula1-pc01' en la configuracion de Kea"
+        fallo "F5. No hay reserva para 'aula1-pc01' en la configuracion de Kea"
         info "     La IP de este equipo no sera fija: cada arranque, una distinta."
         info "     Eso es justo lo que el cliente dijo que no queria."
     fi
 
     if grep -q '"hostname": "aula4-prof"' "$CONF" 2>/dev/null; then
-        ok "F5. Hay una reserva declarada para 'aula4-prof'"
+        ok "F6. Hay una reserva declarada para 'aula4-prof'"
     else
-        fallo "F5. No hay reserva para 'aula4-prof' en la configuracion de Kea"
+        fallo "F6. No hay reserva para 'aula4-prof' en la configuracion de Kea"
         info "     La IP del equipo del profesor no sera fija."
     fi
 
     if grep -q '"enable-updates": true' "$CONF" 2>/dev/null; then
-        ok "F6. El DDNS esta habilitado en la configuracion de Kea"
+        ok "F7. El DDNS esta habilitado en la configuracion de Kea"
     else
-        aviso "F6. El DDNS NO esta habilitado en Kea"
+        aviso "F7. El DDNS NO esta habilitado en Kea"
         info "     Sin DDNS, los nombres de los clientes no se registraran solos"
         info "     en el DNS del dominio. Tendras que hacerlo a mano en la Fase 6."
     fi
 else
-    fallo "F4-F6. No existe $CONF - Kea no esta configurado"
+    fallo "F5-F7. No existe $CONF - Kea no esta configurado"
 fi
 
 # =============================================================================
